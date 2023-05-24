@@ -1,7 +1,7 @@
 platform	:= k210
 #platform	:= qemu
-# mode := debug
-mode := release
+mode := debug
+# mode := release
 K=kernel
 U=xv6-user
 T=target
@@ -59,11 +59,11 @@ endif
 
 QEMU = qemu-system-riscv64
 
-ifeq ($(platform), k210)
-RUSTSBI = ./bootloader/SBI/sbi-k210
-else
-RUSTSBI = ./bootloader/SBI/sbi-qemu
-endif
+# ifeq ($(platform), k210)
+# RUSTSBI = ./bootloader/SBI/sbi-k210
+# else
+# RUSTSBI = ./bootloader/SBI/sbi-qemu
+# endif
 
 # TOOLPREFIX	:= riscv64-unknown-elf-
 TOOLPREFIX	:= riscv64-linux-gnu-
@@ -108,18 +108,18 @@ $T/kernel: $(OBJS) $(linker) $U/initcode
 build: $T/kernel userprogs
 
 # Compile RustSBI
-RUSTSBI:
-ifeq ($(platform), k210)
-	@cd ./bootloader/SBI/rustsbi-k210 && cargo build && cp ./target/riscv64gc-unknown-none-elf/debug/rustsbi-k210 ../sbi-k210
-	@$(OBJDUMP) -S ./bootloader/SBI/sbi-k210 > $T/rustsbi-k210.asm
-else
-	@cd ./bootloader/SBI/rustsbi-qemu && cargo build && cp ./target/riscv64gc-unknown-none-elf/debug/rustsbi-qemu ../sbi-qemu
-	@$(OBJDUMP) -S ./bootloader/SBI/sbi-qemu > $T/rustsbi-qemu.asm
-endif
+# RUSTSBI:
+# ifeq ($(platform), k210)
+# 	@cd ./bootloader/SBI/rustsbi-k210 && cargo build && cp ./target/riscv64gc-unknown-none-elf/debug/rustsbi-k210 ../sbi-k210
+# 	@$(OBJDUMP) -S ./bootloader/SBI/sbi-k210 > $T/rustsbi-k210.asm
+# else
+# 	@cd ./bootloader/SBI/rustsbi-qemu && cargo build && cp ./target/riscv64gc-unknown-none-elf/debug/rustsbi-qemu ../sbi-qemu
+# 	@$(OBJDUMP) -S ./bootloader/SBI/sbi-qemu > $T/rustsbi-qemu.asm
+# endif
 
-rustsbi-clean:
-	@cd ./bootloader/SBI/rustsbi-k210 && cargo clean
-	@cd ./bootloader/SBI/rustsbi-qemu && cargo clean
+# rustsbi-clean:
+# 	@cd ./bootloader/SBI/rustsbi-k210 && cargo clean
+# 	@cd ./bootloader/SBI/rustsbi-qemu && cargo clean
 
 image = $T/kernel.bin
 k210 = $T/k210.bin
@@ -131,7 +131,7 @@ endif
 
 # QEMUOPTS = -machine virt -kernel $T/kernel -m 8M -nographic
 # solve overlap: 8M->128M
-QEMUOPTS = -machine virt -m 128M -nographic -kernel $T/kernel -s -S
+QEMUOPTS = -machine virt -m 128M -nographic -kernel $T/kernel
 
 # use multi-core 
 QEMUOPTS += -smp $(CPUS)
@@ -144,13 +144,13 @@ QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 gdb: build
-	@$(QEMU) $(QEMUOPTS) -S & gdb-multiarch -quiet -ex "set architecture riscv:rv64" -ex "target remote localhost:1234" target/kernel
+	@$(QEMU) $(QEMUOPTS) -s -S & gdb-multiarch -quiet -ex "set architecture riscv:rv64" -ex "target remote localhost:1234" $T/kernel
 
 
 qemu-run:
 	@make build platform=qemu
 	@make fs
-	@qemu-system-riscv64 -machine virt -bios default -m 128M -nographic -kernel target/kernel -smp 2 -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+	@$(QEMU) $(QEMUOPTS)
 
 
 run: build
