@@ -99,13 +99,14 @@ linker = ./linker/qemu.ld
 endif
 
 # Compile Kernel
-$T/kernel: $(OBJS) $(linker) $U/initcode
+$T/kernel-qemu: $(OBJS) $(linker) $U/initcode
 	@if [ ! -d "./target" ]; then mkdir target; fi
-	@$(LD) $(LDFLAGS) -T $(linker) -o $T/kernel $(OBJS)
-	@$(OBJDUMP) -S $T/kernel > $T/kernel.asm
-	@$(OBJDUMP) -t $T/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $T/kernel.sym
+	@$(LD) $(LDFLAGS) -T $(linker) -o $T/kernel-qemu $(OBJS)
+	@$(OBJDUMP) -S $T/kernel-qemu > $T/kernel-qemu.asm
+	@$(OBJDUMP) -t $T/kernel-qemu | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $T/kernel-qemu.sym
   
-build: $T/kernel userprogs
+build: $T/kernel-qemu userprogs
+	@$(OBJCOPY) $T/kernel-qemu --strip-all -O binary $(image)
 
 # Compile RustSBI
 # RUSTSBI:
@@ -121,7 +122,7 @@ build: $T/kernel userprogs
 # 	@cd ./bootloader/SBI/rustsbi-k210 && cargo clean
 # 	@cd ./bootloader/SBI/rustsbi-qemu && cargo clean
 
-image = $T/kernel.bin
+image = $T/kernel-qemu.bin
 k210 = $T/k210.bin
 k210-serialport := /dev/ttyUSB0
 
@@ -152,6 +153,8 @@ qemu-run:
 	@make fs
 	@$(QEMU) $(QEMUOPTS)
 
+all:
+	@make build platform=qemu
 
 run: build
 ifeq ($(platform), k210)
